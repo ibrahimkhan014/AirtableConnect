@@ -195,6 +195,8 @@ export default function RecordsTable({ config }: RecordsTableProps) {
       
       // Status and severity fields (often computed)
       /severity/i, /priority level/i, /bug severity/i,
+      /bug status/i, /status update/i, /current status/i,
+      /comment sentiment/i, /sentiment/i, /author role/i,
       
       // Other computed patterns
       /\([^)]*\)/i,  // Fields with parentheses often indicate formulas
