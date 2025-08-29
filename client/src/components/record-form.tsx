@@ -30,7 +30,10 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
     const readOnlyKeywords = [
       'ai', 'summary', 'formula', 'count', 'rollup', 'lookup',
       'created time', 'created by', 'last modified time', 'last modified by',
-      'auto number', 'barcode', 'calculated', 'computation'
+      'auto number', 'barcode', 'calculated', 'computation',
+      'days open', 'days since', 'time elapsed', 'duration',
+      'photos', 'attachments', 'files', 'images', 'documents',
+      'total', 'sum', 'average', 'max', 'min', 'computed'
     ];
     
     return readOnlyKeywords.some(keyword => fieldLower.includes(keyword));
@@ -89,13 +92,28 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Only send editable fields to prevent API errors
+    // Only send editable fields with valid values to prevent API errors
     const editableData = Object.keys(formData)
       .filter(key => !isReadOnlyField(key))
       .reduce((obj, key) => {
-        obj[key] = formData[key];
+        const value = formData[key];
+        // Only include fields with non-empty, valid values
+        if (value !== null && value !== undefined && value !== '') {
+          // Trim strings to remove whitespace
+          obj[key] = typeof value === 'string' ? value.trim() : value;
+        }
         return obj;
       }, {} as Record<string, any>);
+    
+    // Ensure we have at least one field to update/create
+    if (Object.keys(editableData).length === 0) {
+      toast({
+        title: "No Data to Save",
+        description: "Please fill in at least one field before saving",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (isEditing) {
       updateMutation.mutate(editableData);
