@@ -171,6 +171,37 @@ export default function RecordsTable({ config }: RecordsTableProps) {
   const sampleRecord = records[0];
   const fieldNames = sampleRecord ? Object.keys(sampleRecord.fields) : [];
 
+  // Filter out read-only/computed fields that cannot be edited
+  const isReadOnlyField = (field: string) => {
+    const readOnlyPatterns = [
+      // AI and computed fields
+      /ai/i, /summary/i, /formula/i, /computed/i, /calculated/i,
+      
+      // Counting and mathematical fields
+      /number of/i, /count/i, /total/i, /sum/i, /average/i, /max/i, /min/i,
+      
+      // Time-based computed fields
+      /days? (open|since|elapsed)/i, /time elapsed/i, /duration/i,
+      /created time/i, /created by/i, /last modified/i, /modified by/i,
+      
+      // Attachment and media fields
+      /photo/i, /image/i, /picture/i, /attachment/i, /file/i, /document/i,
+      
+      // Lookup and reference fields
+      /rollup/i, /lookup/i, /reference/i,
+      
+      // Auto-generated fields
+      /auto number/i, /barcode/i, /autonumber/i,
+      
+      // Other computed patterns
+      /\([^)]*\)/i,  // Fields with parentheses often indicate formulas
+    ];
+    
+    return readOnlyPatterns.some(pattern => pattern.test(field));
+  };
+
+  const editableFieldNames = fieldNames.filter(field => !isReadOnlyField(field));
+
   const filteredRecords = records.filter(record => {
     if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
@@ -211,7 +242,7 @@ export default function RecordsTable({ config }: RecordsTableProps) {
                 <DialogTitle>Create New Record</DialogTitle>
               </DialogHeader>
               <RecordForm
-                fields={fieldNames}
+                fields={editableFieldNames}
                 config={config}
                 onSuccess={() => setShowCreateForm(false)}
               />
@@ -376,7 +407,7 @@ export default function RecordsTable({ config }: RecordsTableProps) {
           </DialogHeader>
           {editingRecord && (
             <RecordForm
-              fields={fieldNames}
+              fields={editableFieldNames}
               initialValues={editingRecord.fields}
               recordId={editingRecord.id}
               config={config}

@@ -27,16 +27,33 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
   // Filter out read-only/computed fields that cannot be edited
   const isReadOnlyField = (field: string) => {
     const fieldLower = field.toLowerCase();
-    const readOnlyKeywords = [
-      'ai', 'summary', 'formula', 'count', 'rollup', 'lookup',
-      'created time', 'created by', 'last modified time', 'last modified by',
-      'auto number', 'barcode', 'calculated', 'computation',
-      'days open', 'days since', 'time elapsed', 'duration',
-      'photos', 'attachments', 'files', 'images', 'documents',
-      'total', 'sum', 'average', 'max', 'min', 'computed'
+    
+    // Comprehensive list of patterns for read-only fields
+    const readOnlyPatterns = [
+      // AI and computed fields
+      /ai/i, /summary/i, /formula/i, /computed/i, /calculated/i,
+      
+      // Counting and mathematical fields
+      /number of/i, /count/i, /total/i, /sum/i, /average/i, /max/i, /min/i,
+      
+      // Time-based computed fields
+      /days? (open|since|elapsed)/i, /time elapsed/i, /duration/i,
+      /created time/i, /created by/i, /last modified/i, /modified by/i,
+      
+      // Attachment and media fields
+      /photo/i, /image/i, /picture/i, /attachment/i, /file/i, /document/i,
+      
+      // Lookup and reference fields
+      /rollup/i, /lookup/i, /reference/i,
+      
+      // Auto-generated fields
+      /auto number/i, /barcode/i, /autonumber/i,
+      
+      // Other computed patterns
+      /\([^)]*\)/i,  // Fields with parentheses often indicate formulas
     ];
     
-    return readOnlyKeywords.some(keyword => fieldLower.includes(keyword));
+    return readOnlyPatterns.some(pattern => pattern.test(field));
   };
 
   const editableFields = fields.filter(field => !isReadOnlyField(field));
@@ -114,6 +131,11 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
       });
       return;
     }
+    
+    // Debug logging to help identify problematic fields
+    console.log('Filtered fields being sent:', Object.keys(editableData));
+    console.log('All original fields:', fields);
+    console.log('Read-only fields filtered out:', fields.filter(field => isReadOnlyField(field)));
     
     if (isEditing) {
       updateMutation.mutate(editableData);
