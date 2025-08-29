@@ -24,6 +24,20 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
   const queryClient = useQueryClient();
   const isEditing = !!recordId;
 
+  // Filter out read-only/computed fields that cannot be edited
+  const isReadOnlyField = (field: string) => {
+    const fieldLower = field.toLowerCase();
+    const readOnlyKeywords = [
+      'ai', 'summary', 'formula', 'count', 'rollup', 'lookup',
+      'created time', 'created by', 'last modified time', 'last modified by',
+      'auto number', 'barcode', 'calculated', 'computation'
+    ];
+    
+    return readOnlyKeywords.some(keyword => fieldLower.includes(keyword));
+  };
+
+  const editableFields = fields.filter(field => !isReadOnlyField(field));
+
   const createMutation = useMutation({
     mutationFn: async (data: Record<string, any>) => {
       const response = await apiRequest("POST", `/api/airtable/${config.tableName}`, {
@@ -75,10 +89,18 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Only send editable fields to prevent API errors
+    const editableData = Object.keys(formData)
+      .filter(key => !isReadOnlyField(key))
+      .reduce((obj, key) => {
+        obj[key] = formData[key];
+        return obj;
+      }, {} as Record<string, any>);
+    
     if (isEditing) {
-      updateMutation.mutate(formData);
+      updateMutation.mutate(editableData);
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(editableData);
     }
   };
 
@@ -146,7 +168,7 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="record-form">
-      {fields.map((field) => (
+      {editableFields.map((field) => (
         <div key={field} className="space-y-2">
           <Label htmlFor={field}>
             {field}
@@ -157,6 +179,12 @@ export default function RecordForm({ fields, config, initialValues = {}, recordI
           {getFieldInput(field)}
         </div>
       ))}
+      
+      {editableFields.length === 0 && (
+        <div className="text-center py-4 text-muted-foreground">
+          No editable fields available in this table.
+        </div>
+      )}
       
       <div className="flex justify-end space-x-2 pt-4">
         <Button 
