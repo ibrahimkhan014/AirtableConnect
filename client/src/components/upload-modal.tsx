@@ -28,17 +28,26 @@ export default function UploadModal({ open, onOpenChange, recordId, config, avai
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Detect attachment fields from available fields
-  const attachmentFields = availableFields.filter(field => {
+  // Detect attachment fields from available fields, prioritizing image-specific fields
+  const imageFields = availableFields.filter(field => {
     const fieldLower = field.toLowerCase();
-    return fieldLower.includes('attachment') || 
+    return fieldLower.includes('image') || 
            fieldLower.includes('photo') || 
-           fieldLower.includes('image') || 
-           fieldLower.includes('file') || 
+           fieldLower.includes('picture') ||
            fieldLower.includes('screenshot') ||
-           fieldLower.includes('document');
+           fieldLower.includes('pic');
   });
 
+  const generalAttachmentFields = availableFields.filter(field => {
+    const fieldLower = field.toLowerCase();
+    return fieldLower.includes('attachment') || 
+           fieldLower.includes('file') || 
+           fieldLower.includes('document') ||
+           fieldLower.includes('upload');
+  });
+
+  // Prioritize image fields first, then general attachment fields
+  const attachmentFields = [...imageFields, ...generalAttachmentFields];
   const attachmentFieldName = attachmentFields[0] || "Attachments"; // fallback to "Attachments"
 
   const uploadMutation = useMutation({
