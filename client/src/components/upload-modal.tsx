@@ -12,6 +12,7 @@ interface UploadModalProps {
   onOpenChange: (open: boolean) => void;
   recordId: string;
   config: AirtableConfig;
+  availableFields?: string[];
 }
 
 interface SelectedFile {
@@ -20,12 +21,25 @@ interface SelectedFile {
   size: string;
 }
 
-export default function UploadModal({ open, onOpenChange, recordId, config }: UploadModalProps) {
+export default function UploadModal({ open, onOpenChange, recordId, config, availableFields = [] }: UploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Detect attachment fields from available fields
+  const attachmentFields = availableFields.filter(field => {
+    const fieldLower = field.toLowerCase();
+    return fieldLower.includes('attachment') || 
+           fieldLower.includes('photo') || 
+           fieldLower.includes('image') || 
+           fieldLower.includes('file') || 
+           fieldLower.includes('screenshot') ||
+           fieldLower.includes('document');
+  });
+
+  const attachmentFieldName = attachmentFields[0] || "Attachments"; // fallback to "Attachments"
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, fieldName }: { file: File; fieldName: string }) => {
@@ -115,11 +129,18 @@ export default function UploadModal({ open, onOpenChange, recordId, config }: Up
   const handleUpload = () => {
     if (!selectedFile) return;
     
-    // Assume we're uploading to an "Attachments" field
-    // In a real app, you might want to let the user select the field
+    if (attachmentFields.length === 0) {
+      toast({
+        title: "No Attachment Field",
+        description: "This table doesn't have any attachment fields to upload to",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     uploadMutation.mutate({ 
       file: selectedFile.file, 
-      fieldName: "Attachments" 
+      fieldName: attachmentFieldName 
     });
   };
 
@@ -136,6 +157,12 @@ export default function UploadModal({ open, onOpenChange, recordId, config }: Up
         <DialogHeader>
           <DialogTitle>Upload Attachment</DialogTitle>
         </DialogHeader>
+        
+        {attachmentFields.length > 0 && (
+          <div className="text-sm text-muted-foreground">
+            File will be uploaded to: <span className="font-medium">{attachmentFieldName}</span>
+          </div>
+        )}
         
         <div className="space-y-4">
           <div

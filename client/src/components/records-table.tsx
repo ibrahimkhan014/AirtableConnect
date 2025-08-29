@@ -428,6 +428,7 @@ export default function RecordsTable({ config }: RecordsTableProps) {
         onOpenChange={setShowUploadModal}
         recordId={uploadRecordId}
         config={config}
+        availableFields={fieldNames}
       />
     </div>
   );
