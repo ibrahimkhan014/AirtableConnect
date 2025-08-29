@@ -193,6 +193,9 @@ export default function RecordsTable({ config }: RecordsTableProps) {
       // Auto-generated fields
       /auto number/i, /barcode/i, /autonumber/i,
       
+      // Status and severity fields (often computed)
+      /severity/i, /priority level/i, /bug severity/i,
+      
       // Other computed patterns
       /\([^)]*\)/i,  // Fields with parentheses often indicate formulas
     ];
