@@ -8,7 +8,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { RefreshCw, Plus, Edit, Paperclip, Trash2, Search, Table } from "lucide-react";
+import { RefreshCw, Plus, Edit, Paperclip, Trash2, Search, Table, Users, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RecordForm from "./record-form";
 import UploadModal from "./upload-modal";
 import type { AirtableConfig, AirtableResponse, AirtableRecord } from "@shared/schema";
@@ -23,6 +24,7 @@ export default function RecordsTable({ config }: RecordsTableProps) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadRecordId, setUploadRecordId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPerson, setSelectedPerson] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -207,12 +209,32 @@ export default function RecordsTable({ config }: RecordsTableProps) {
 
   const editableFieldNames = fieldNames.filter(field => !isReadOnlyField(field));
 
+  // Extract unique people from "Assigned To" field
+  const assignedToField = fieldNames.find(field => 
+    field.toLowerCase().includes('assigned') || 
+    field.toLowerCase().includes('assignee') ||
+    field.toLowerCase().includes('owner') ||
+    field.toLowerCase().includes('responsible')
+  );
+
+  const uniquePeople = assignedToField ? 
+    Array.from(new Set(records
+      .map(record => record.fields[assignedToField])
+      .filter(person => person && String(person).trim())
+      .map(person => String(person).trim())
+    )).sort() : [];
+
   const filteredRecords = records.filter(record => {
-    if (!searchQuery) return true;
-    const searchLower = searchQuery.toLowerCase();
-    return Object.values(record.fields).some(value => 
-      String(value).toLowerCase().includes(searchLower)
+    // Filter by search query
+    const matchesSearch = !searchQuery || Object.values(record.fields).some(value => 
+      String(value).toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Filter by selected person
+    const matchesPerson = selectedPerson === "all" || 
+      (assignedToField && String(record.fields[assignedToField] || "").trim() === selectedPerson);
+
+    return matchesSearch && matchesPerson;
   });
 
   return (
@@ -223,7 +245,10 @@ export default function RecordsTable({ config }: RecordsTableProps) {
           <h2 className="text-2xl font-bold text-foreground">Records Management</h2>
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <Table className="w-4 h-4" />
-            <span data-testid="text-record-count">{records.length} records</span>
+            <span data-testid="text-record-count">
+              {filteredRecords.length} of {records.length} records
+              {selectedPerson !== "all" && ` assigned to ${selectedPerson}`}
+            </span>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -265,6 +290,31 @@ export default function RecordsTable({ config }: RecordsTableProps) {
               {config.tableName} Records
             </CardTitle>
             <div className="flex items-center space-x-2">
+              {assignedToField && uniquePeople.length > 0 && (
+                <div className="flex items-center space-x-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <Select value={selectedPerson} onValueChange={setSelectedPerson}>
+                    <SelectTrigger className="w-48" data-testid="select-person-filter">
+                      <SelectValue placeholder="Filter by person" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" data-testid="option-all-people">
+                        All People ({records.length})
+                      </SelectItem>
+                      {uniquePeople.map(person => {
+                        const count = records.filter(record => 
+                          String(record.fields[assignedToField] || "").trim() === person
+                        ).length;
+                        return (
+                          <SelectItem key={person} value={person} data-testid={`option-person-${person}`}>
+                            {person} ({count})
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 <Input
